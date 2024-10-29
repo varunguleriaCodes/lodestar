@@ -47,7 +47,15 @@ import {
   getValidatorStatus,
 } from "@lodestar/types";
 import {ExecutionStatus, DataAvailabilityStatus} from "@lodestar/fork-choice";
-import {fromHex, toHex, resolveOrRacePromises, prettyWeiToEth, toRootHex} from "@lodestar/utils";
+import {
+  fromHex,
+  toHex,
+  resolveOrRacePromises,
+  prettyWeiToEth,
+  toRootHex,
+  TimeoutError,
+  formatWeiToEth,
+} from "@lodestar/utils";
 import {
   AttestationError,
   AttestationErrorCode,
@@ -114,6 +122,41 @@ type ProduceFullOrBlindedBlockOrContentsRes = {executionPayloadSource: ProducedB
   | (ProduceBlockOrContentsRes & {executionPayloadBlinded: false})
   | (ProduceBlindedBlockRes & {executionPayloadBlinded: true})
 );
+
+/**
+ * Engine block selection reasons tracked in metrics
+ */
+export enum EngineBlockSelectionReason {
+  BuilderDisabled = "builder_disabled",
+  BuilderError = "builder_error",
+  BuilderTimeout = "builder_timeout",
+  BuilderPending = "builder_pending",
+  BuilderNoBid = "builder_no_bid",
+  BuilderCensorship = "builder_censorship",
+  BlockValue = "block_value",
+  EnginePreferred = "engine_preferred",
+}
+
+/**
+ * Builder block selection reasons tracked in metrics
+ */
+export enum BuilderBlockSelectionReason {
+  EngineDisabled = "engine_disabled",
+  EngineError = "engine_error",
+  EnginePending = "engine_pending",
+  BlockValue = "block_value",
+  BuilderPreferred = "builder_preferred",
+}
+
+export type BlockSelectionResult =
+  | {
+      source: ProducedBlockSource.engine;
+      reason: EngineBlockSelectionReason;
+    }
+  | {
+      source: ProducedBlockSource.builder;
+      reason: BuilderBlockSelectionReason;
+    };
 
 /**
  * Server implementation for handling validator duties.
@@ -417,6 +460,7 @@ export function getValidatorApi(
 
       metrics?.blockProductionSuccess.inc({source});
       metrics?.blockProductionNumAggregated.observe({source}, block.body.attestations.length);
+      metrics?.blockProductionExecutionPayloadValue.observe({source}, Number(formatWeiToEth(executionPayloadValue)));
       logger.verbose("Produced blinded block", {
         slot,
         executionPayloadValue,
@@ -491,6 +535,7 @@ export function getValidatorApi(
 
       metrics?.blockProductionSuccess.inc({source});
       metrics?.blockProductionNumAggregated.observe({source}, block.body.attestations.length);
+      metrics?.blockProductionExecutionPayloadValue.observe({source}, Number(formatWeiToEth(executionPayloadValue)));
       logger.verbose("Produced execution block", {
         slot,
         executionPayloadValue,
@@ -694,6 +739,11 @@ export function getValidatorApi(
         ...getBlockValueLogInfo(engine.value),
       });
 
+      metrics?.blockProductionSelectionResults.inc({
+        source: ProducedBlockSource.engine,
+        reason: EngineBlockSelectionReason.BuilderCensorship,
+      });
+
       return {...engine.value, executionPayloadBlinded: false, executionPayloadSource: ProducedBlockSource.engine};
     }
 
@@ -702,6 +752,16 @@ export function getValidatorApi(
         ...loggerContext,
         durationMs: builder.durationMs,
         ...getBlockValueLogInfo(builder.value),
+      });
+
+      metrics?.blockProductionSelectionResults.inc({
+        source: ProducedBlockSource.builder,
+        reason:
+          isEngineEnabled === false
+            ? BuilderBlockSelectionReason.EngineDisabled
+            : engine.status === "pending"
+              ? BuilderBlockSelectionReason.EnginePending
+              : BuilderBlockSelectionReason.EngineError,
       });
 
       return {...builder.value, executionPayloadBlinded: true, executionPayloadSource: ProducedBlockSource.builder};
@@ -714,16 +774,33 @@ export function getValidatorApi(
         ...getBlockValueLogInfo(engine.value),
       });
 
+      metrics?.blockProductionSelectionResults.inc({
+        source: ProducedBlockSource.engine,
+        reason:
+          isBuilderEnabled === false
+            ? EngineBlockSelectionReason.BuilderDisabled
+            : builder.status === "pending"
+              ? EngineBlockSelectionReason.BuilderPending
+              : builder.reason instanceof NoBidReceived
+                ? EngineBlockSelectionReason.BuilderNoBid
+                : builder.reason instanceof TimeoutError
+                  ? EngineBlockSelectionReason.BuilderTimeout
+                  : EngineBlockSelectionReason.BuilderError,
+      });
+
       return {...engine.value, executionPayloadBlinded: false, executionPayloadSource: ProducedBlockSource.engine};
     }
 
     if (engine.status === "fulfilled" && builder.status === "fulfilled") {
-      const executionPayloadSource = selectBlockProductionSource({
+      const result = selectBlockProductionSource({
         builderBlockValue: builder.value.executionPayloadValue + builder.value.consensusBlockValue,
         engineBlockValue: engine.value.executionPayloadValue + engine.value.consensusBlockValue,
         builderBoostFactor,
         builderSelection,
       });
+      const executionPayloadSource = result.source;
+
+      metrics?.blockProductionSelectionResults.inc(result);
 
       logger.info(`Selected ${executionPayloadSource} block`, {
         ...loggerContext,

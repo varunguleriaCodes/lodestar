@@ -3,6 +3,11 @@ import {NotReorgedReason} from "@lodestar/fork-choice/lib/forkChoice/interface.j
 import {UpdateHeadOpt} from "@lodestar/fork-choice";
 import {RegistryMetricCreator} from "../utils/registryMetricCreator.js";
 import {BlockProductionStep, PayloadPreparationType} from "../../chain/produceBlock/index.js";
+import {
+  BlockSelectionResult,
+  BuilderBlockSelectionReason,
+  EngineBlockSelectionReason,
+} from "../../api/impl/validator/index.js";
 
 export type BeaconMetrics = ReturnType<typeof createBeaconMetrics>;
 
@@ -160,10 +165,21 @@ export function createBeaconMetrics(register: RegistryMetricCreator) {
       help: "Count of blocks successfully produced",
       labelNames: ["source"],
     }),
+    blockProductionSelectionResults: register.gauge<BlockSelectionResult>({
+      name: "beacon_block_production_selection_results_total",
+      help: "Count of all block production selection results",
+      labelNames: ["source", "reason"],
+    }),
     blockProductionNumAggregated: register.histogram<{source: ProducedBlockSource}>({
       name: "beacon_block_production_num_aggregated_total",
       help: "Count of all aggregated attestations in our produced block",
       buckets: [32, 64, 96, 128],
+      labelNames: ["source"],
+    }),
+    blockProductionExecutionPayloadValue: register.histogram<{source: ProducedBlockSource}>({
+      name: "beacon_block_production_execution_payload_value",
+      help: "Execution payload value denominated in ETH of produced blocks",
+      buckets: [0.001, 0.005, 0.01, 0.03, 0.05, 0.07, 0.1, 0.3, 0.5, 1],
       labelNames: ["source"],
     }),
 
