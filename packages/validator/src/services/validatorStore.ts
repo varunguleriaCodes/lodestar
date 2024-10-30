@@ -377,7 +377,9 @@ export class ValidatorStore {
       graffiti !== undefined ||
       strictFeeRecipientCheck !== undefined ||
       feeRecipient !== undefined ||
-      builder?.gasLimit !== undefined
+      builder?.gasLimit !== undefined ||
+      builder?.selection !== undefined ||
+      builder?.boostFactor !== undefined
     ) {
       proposerConfig = {graffiti, strictFeeRecipientCheck, feeRecipient, builder};
     }
