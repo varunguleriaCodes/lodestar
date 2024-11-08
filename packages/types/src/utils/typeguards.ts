@@ -10,6 +10,7 @@ import {
   ExecutionPayload,
   ExecutionPayloadAndBlobsBundle,
   ExecutionPayloadHeader,
+  LightClientFinalityUpdate,
   LightClientUpdate,
   SignedBeaconBlock,
   SignedBeaconBlockOrContents,
@@ -74,6 +75,16 @@ export function isElectraAttestation(attestation: Attestation): attestation is A
 }
 
 export function isElectraLightClientUpdate(update: LightClientUpdate): update is LightClientUpdate<ForkPostElectra> {
+  const updatePostElectra = update as LightClientUpdate<ForkPostElectra>;
+  return (
+    updatePostElectra.finalityBranch !== undefined &&
+    updatePostElectra.finalityBranch.length === FINALIZED_ROOT_DEPTH_ELECTRA
+  );
+}
+
+export function isELectraLightClientFinalityUpdate(
+  update: LightClientFinalityUpdate
+): update is LightClientFinalityUpdate<ForkPostElectra> {
   const updatePostElectra = update as LightClientUpdate<ForkPostElectra>;
   return (
     updatePostElectra.finalityBranch !== undefined &&
