@@ -88,7 +88,9 @@ export class BeaconSync implements IBeaconSync {
 
   getSyncStatus(): SyncingStatus {
     const currentSlot = this.chain.clock.currentSlot;
-    const elOffline = this.chain.executionEngine.state === ExecutionEngineState.OFFLINE;
+    const elOffline =
+      this.chain.executionEngine.state === ExecutionEngineState.OFFLINE ||
+      this.chain.executionEngine.state === ExecutionEngineState.AUTH_FAILED;
 
     // If we are pre/at genesis, signal ready
     if (currentSlot <= GENESIS_SLOT) {
@@ -99,31 +101,31 @@ export class BeaconSync implements IBeaconSync {
         isOptimistic: false,
         elOffline,
       };
-    } else {
-      const head = this.chain.forkChoice.getHead();
+    }
 
-      switch (this.state) {
-        case SyncState.SyncingFinalized:
-        case SyncState.SyncingHead:
-        case SyncState.Stalled:
-          return {
-            headSlot: head.slot,
-            syncDistance: currentSlot - head.slot,
-            isSyncing: true,
-            isOptimistic: isOptimisticBlock(head),
-            elOffline,
-          };
-        case SyncState.Synced:
-          return {
-            headSlot: head.slot,
-            syncDistance: 0,
-            isSyncing: false,
-            isOptimistic: isOptimisticBlock(head),
-            elOffline,
-          };
-        default:
-          throw new Error("Node is stopped, cannot get sync status");
-      }
+    const head = this.chain.forkChoice.getHead();
+
+    switch (this.state) {
+      case SyncState.SyncingFinalized:
+      case SyncState.SyncingHead:
+      case SyncState.Stalled:
+        return {
+          headSlot: head.slot,
+          syncDistance: currentSlot - head.slot,
+          isSyncing: true,
+          isOptimistic: isOptimisticBlock(head),
+          elOffline,
+        };
+      case SyncState.Synced:
+        return {
+          headSlot: head.slot,
+          syncDistance: 0,
+          isSyncing: false,
+          isOptimistic: isOptimisticBlock(head),
+          elOffline,
+        };
+      default:
+        throw new Error("Node is stopped, cannot get sync status");
     }
   }
 
@@ -163,6 +165,8 @@ export class BeaconSync implements IBeaconSync {
         return SyncState.SyncingHead;
       case RangeSyncStatus.Idle:
         return SyncState.Stalled;
+      default:
+        throw new Error("Unreachable code");
     }
   }
 

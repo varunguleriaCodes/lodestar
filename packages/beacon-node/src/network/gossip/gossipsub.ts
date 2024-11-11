@@ -26,7 +26,6 @@ import {
   GOSSIP_D_LOW,
 } from "./scoringParameters.js";
 
-/* eslint-disable @typescript-eslint/naming-convention */
 /** As specified in https://github.com/ethereum/consensus-specs/blob/v1.1.10/specs/phase0/p2p-interface.md */
 const GOSSIPSUB_HEARTBEAT_INTERVAL = 0.7 * 1000;
 
@@ -122,7 +121,7 @@ export class Eth2Gossipsub extends GossipSub {
       // TODO: figure out a way to dynamically transition to the size
       dataTransform: new DataTransformSnappy(
         gossipTopicCache,
-        isFinite(config.BELLATRIX_FORK_EPOCH) ? GOSSIP_MAX_SIZE_BELLATRIX : GOSSIP_MAX_SIZE
+        Number.isFinite(config.BELLATRIX_FORK_EPOCH) ? GOSSIP_MAX_SIZE_BELLATRIX : GOSSIP_MAX_SIZE
       ),
       metricsRegister: metricsRegister as MetricsRegister | null,
       metricsTopicStrToLabel: metricsRegister
@@ -181,10 +180,11 @@ export class Eth2Gossipsub extends GossipSub {
   }
 
   private onScrapeLodestarMetrics(metrics: Eth2GossipsubMetrics): void {
-    const mesh = this["mesh"];
+    const mesh = this.mesh;
+    // biome-ignore lint/complexity/useLiteralKeys: `topics` is a private attribute
     const topics = this["topics"] as Map<string, Set<string>>;
-    const peers = this["peers"];
-    const score = this["score"];
+    const peers = this.peers;
+    const score = this.score;
     const meshPeersByClient = new Map<string, number>();
     const meshPeerIdStrs = new Set<string>();
 
@@ -321,7 +321,8 @@ export class Eth2Gossipsub extends GossipSub {
  */
 function attSubnetLabel(subnet: number): string {
   if (subnet > 9) return String(subnet);
-  else return `0${subnet}`;
+
+  return `0${subnet}`;
 }
 
 function getMetricsTopicStrToLabel(config: BeaconConfig, opts: {disableLightClientServer: boolean}): TopicStrToLabel {

@@ -3,6 +3,11 @@ import {NotReorgedReason} from "@lodestar/fork-choice/lib/forkChoice/interface.j
 import {UpdateHeadOpt} from "@lodestar/fork-choice";
 import {RegistryMetricCreator} from "../utils/registryMetricCreator.js";
 import {BlockProductionStep, PayloadPreparationType} from "../../chain/produceBlock/index.js";
+import {
+  BlockSelectionResult,
+  BuilderBlockSelectionReason,
+  EngineBlockSelectionReason,
+} from "../../api/impl/validator/index.js";
 
 export type BeaconMetrics = ReturnType<typeof createBeaconMetrics>;
 
@@ -11,7 +16,6 @@ export type BeaconMetrics = ReturnType<typeof createBeaconMetrics>;
  * https://github.com/ethereum/beacon-metrics/ and
  * https://hackmd.io/D5FmoeFZScim_squBFl8oA
  */
-// eslint-disable-next-line @typescript-eslint/explicit-function-return-type
 export function createBeaconMetrics(register: RegistryMetricCreator) {
   return {
     // From https://github.com/ethereum/beacon-metrics/blob/master/metrics.md
@@ -59,11 +63,11 @@ export function createBeaconMetrics(register: RegistryMetricCreator) {
     // Non-spec'ed
 
     forkChoice: {
-      findHead: register.histogram<{entrypoint: string}>({
+      findHead: register.histogram<{caller: string}>({
         name: "beacon_fork_choice_find_head_seconds",
         help: "Time taken to find head in seconds",
         buckets: [0.1, 1, 10],
-        labelNames: ["entrypoint"],
+        labelNames: ["caller"],
       }),
       requests: register.gauge({
         name: "beacon_fork_choice_requests_total",
@@ -95,7 +99,7 @@ export function createBeaconMetrics(register: RegistryMetricCreator) {
       }),
       queuedAttestations: register.gauge({
         name: "beacon_fork_choice_queued_attestations_count",
-        help: "Current count of queued_attestations in fork choice data structures",
+        help: "Count of queued_attestations in fork choice per slot",
       }),
       validatedAttestationDatas: register.gauge({
         name: "beacon_fork_choice_validated_attestation_datas_count",
@@ -122,7 +126,7 @@ export function createBeaconMetrics(register: RegistryMetricCreator) {
 
     headState: {
       unfinalizedPubkeyCacheSize: register.gauge({
-        name: "head_state_unfinalized_pubkey_cache_size",
+        name: "beacon_head_state_unfinalized_pubkey_cache_size",
         help: "Current size of the unfinalizedPubkey2Index cache in the head state",
       }),
     },
@@ -161,10 +165,21 @@ export function createBeaconMetrics(register: RegistryMetricCreator) {
       help: "Count of blocks successfully produced",
       labelNames: ["source"],
     }),
+    blockProductionSelectionResults: register.gauge<BlockSelectionResult>({
+      name: "beacon_block_production_selection_results_total",
+      help: "Count of all block production selection results",
+      labelNames: ["source", "reason"],
+    }),
     blockProductionNumAggregated: register.histogram<{source: ProducedBlockSource}>({
       name: "beacon_block_production_num_aggregated_total",
       help: "Count of all aggregated attestations in our produced block",
       buckets: [32, 64, 96, 128],
+      labelNames: ["source"],
+    }),
+    blockProductionExecutionPayloadValue: register.histogram<{source: ProducedBlockSource}>({
+      name: "beacon_block_production_execution_payload_value",
+      help: "Execution payload value denominated in ETH of produced blocks",
+      buckets: [0.001, 0.005, 0.01, 0.03, 0.05, 0.07, 0.1, 0.3, 0.5, 1],
       labelNames: ["source"],
     }),
 

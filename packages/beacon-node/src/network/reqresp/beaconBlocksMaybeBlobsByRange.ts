@@ -1,11 +1,11 @@
 import {ChainForkConfig} from "@lodestar/config";
-import {deneb, Epoch, phase0, SignedBeaconBlock, Slot} from "@lodestar/types";
+import {deneb, Epoch, phase0, SignedBeaconBlock, Slot, WithBytes} from "@lodestar/types";
 import {ForkSeq} from "@lodestar/params";
 import {computeEpochAtSlot} from "@lodestar/state-transition";
 
 import {BlobsSource, BlockInput, BlockSource, getBlockInput, BlockInputDataBlobs} from "../../chain/blocks/types.js";
 import {PeerIdStr} from "../../util/peerId.js";
-import {INetwork, WithBytes} from "../interface.js";
+import {INetwork} from "../interface.js";
 
 export async function beaconBlocksMaybeBlobsByRange(
   config: ChainForkConfig,
@@ -37,7 +37,7 @@ export async function beaconBlocksMaybeBlobsByRange(
   }
 
   // Only request blobs if they are recent enough
-  else if (computeEpochAtSlot(startSlot) >= currentEpoch - config.MIN_EPOCHS_FOR_BLOB_SIDECARS_REQUESTS) {
+  if (computeEpochAtSlot(startSlot) >= currentEpoch - config.MIN_EPOCHS_FOR_BLOB_SIDECARS_REQUESTS) {
     const [allBlocks, allBlobSidecars] = await Promise.all([
       network.sendBeaconBlocksByRange(peerId, request),
       network.sendBlobSidecarsByRange(peerId, request),
@@ -47,9 +47,7 @@ export async function beaconBlocksMaybeBlobsByRange(
   }
 
   // Post Deneb but old blobs
-  else {
-    throw Error("Cannot sync blobs outside of blobs prune window");
-  }
+  throw Error("Cannot sync blobs outside of blobs prune window");
 }
 
 // Assumes that the blobs are in the same sequence as blocks, doesn't require block to be sorted
@@ -80,6 +78,7 @@ export function matchBlockWithBlobs(
 
       let blobSidecar: deneb.BlobSidecar;
       while (
+        // biome-ignore lint/suspicious/noAssignInExpressions: <explanation>
         (blobSidecar = allBlobSidecars[blobSideCarIndex])?.signedBlockHeader.message.slot === block.data.message.slot
       ) {
         blobSidecars.push(blobSidecar);

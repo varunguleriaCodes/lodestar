@@ -10,7 +10,7 @@ import {getAttnets, getSyncnets} from "../../../../utils/network.js";
 describe("prioritizePeers", () => {
   const seedPeers: {id: PeerId; attnets: phase0.AttestationSubnets; syncnets: altair.SyncSubnets; score: number}[] = [];
 
-  before(async function () {
+  before(async () => {
     for (let i = 0; i < defaultNetworkOptions.maxPeers; i++) {
       const peer = await createSecp256k1PeerId();
       peer.toString = () => `peer-${i}`;

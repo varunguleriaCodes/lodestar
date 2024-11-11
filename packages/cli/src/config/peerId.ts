@@ -14,7 +14,8 @@ async function createFromParts(multihash: Uint8Array, privKey?: Uint8Array, pubK
     const key = await unmarshalPrivateKey(privKey);
 
     return createFromPrivKey(key);
-  } else if (pubKey != null) {
+  }
+  if (pubKey != null) {
     const key = unmarshalPublicKey(pubKey);
 
     return createFromPubKey(key);

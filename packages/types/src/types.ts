@@ -1,4 +1,12 @@
-import {ForkAll, ForkBlobs, ForkExecution, ForkLightClient, ForkName, ForkPreBlobs} from "@lodestar/params";
+import {
+  ForkAll,
+  ForkBlobs,
+  ForkExecution,
+  ForkLightClient,
+  ForkName,
+  ForkPostElectra,
+  ForkPreBlobs,
+} from "@lodestar/params";
 import {ts as phase0} from "./phase0/index.js";
 import {ts as altair} from "./altair/index.js";
 import {ts as bellatrix} from "./bellatrix/index.js";
@@ -23,6 +31,18 @@ export enum ProducedBlockSource {
   builder = "builder",
   engine = "engine",
 }
+
+export type WithBytes<T> = {
+  data: T;
+  /** SSZ serialized `data` bytes */
+  bytes: Uint8Array;
+};
+
+export type WithOptionalBytes<T> = {
+  data: T;
+  /** SSZ serialized `data` bytes */
+  bytes?: Uint8Array | null;
+};
 
 export type SlotRootHex = {slot: Slot; root: RootHex};
 export type SlotOptionalRoot = {slot: Slot; root?: RootHex};
@@ -172,7 +192,7 @@ type TypesByFork = {
     BeaconState: electra.BeaconState;
     SignedBeaconBlock: electra.SignedBeaconBlock;
     Metadata: altair.Metadata;
-    LightClientHeader: electra.LightClientHeader;
+    LightClientHeader: deneb.LightClientHeader;
     LightClientBootstrap: electra.LightClientBootstrap;
     LightClientUpdate: electra.LightClientUpdate;
     LightClientFinalityUpdate: electra.LightClientFinalityUpdate;
@@ -181,8 +201,8 @@ type TypesByFork = {
     BlindedBeaconBlock: electra.BlindedBeaconBlock;
     BlindedBeaconBlockBody: electra.BlindedBeaconBlockBody;
     SignedBlindedBeaconBlock: electra.SignedBlindedBeaconBlock;
-    ExecutionPayload: electra.ExecutionPayload;
-    ExecutionPayloadHeader: electra.ExecutionPayloadHeader;
+    ExecutionPayload: deneb.ExecutionPayload;
+    ExecutionPayloadHeader: deneb.ExecutionPayloadHeader;
     BuilderBid: electra.BuilderBid;
     SignedBuilderBid: electra.SignedBuilderBid;
     SSEPayloadAttributes: electra.SSEPayloadAttributes;
@@ -199,6 +219,7 @@ type TypesByFork = {
     AttesterSlashing: electra.AttesterSlashing;
     AggregateAndProof: electra.AggregateAndProof;
     SignedAggregateAndProof: electra.SignedAggregateAndProof;
+    ExecutionRequests: electra.ExecutionRequests;
   };
 };
 
@@ -233,6 +254,7 @@ export type SignedBeaconBlockOrContents<FB extends ForkPreBlobs = ForkPreBlobs, 
 
 export type ExecutionPayload<F extends ForkExecution = ForkExecution> = TypesByFork[F]["ExecutionPayload"];
 export type ExecutionPayloadHeader<F extends ForkExecution = ForkExecution> = TypesByFork[F]["ExecutionPayloadHeader"];
+export type ExecutionRequests<F extends ForkPostElectra = ForkPostElectra> = TypesByFork[F]["ExecutionRequests"];
 
 export type BlobsBundle<F extends ForkBlobs = ForkBlobs> = TypesByFork[F]["BlobsBundle"];
 export type Contents<F extends ForkBlobs = ForkBlobs> = TypesByFork[F]["Contents"];

@@ -1,5 +1,3 @@
-/* eslint-disable @typescript-eslint/naming-convention */
-import {fromHexString, toHexString} from "@chainsafe/ssz";
 import {
   ssz,
   bellatrix,
@@ -10,10 +8,11 @@ import {
   ExecutionPayloadAndBlobsBundle,
   SignedBlindedBeaconBlock,
   SignedBuilderBid,
+  WithOptionalBytes,
 } from "@lodestar/types";
 import {ForkName, isForkBlobs} from "@lodestar/params";
 import {ChainForkConfig} from "@lodestar/config";
-import {toPubkeyHex} from "@lodestar/utils";
+import {fromHex, toPubkeyHex, toRootHex} from "@lodestar/utils";
 
 import {Endpoint, RouteDefinitions, Schema} from "../utils/index.js";
 import {MetaHeader, VersionCodec, VersionMeta} from "../utils/metadata.js";
@@ -73,15 +72,12 @@ export type Endpoints = {
 
   submitBlindedBlock: Endpoint<
     "POST",
-    {signedBlindedBlock: SignedBlindedBeaconBlock},
+    {signedBlindedBlock: WithOptionalBytes<SignedBlindedBeaconBlock>},
     {body: unknown; headers: {[MetaHeader.Version]: string}},
     ExecutionPayload | ExecutionPayloadAndBlobsBundle,
     VersionMeta
   >;
 };
-
-// NOTE: Builder API does not support SSZ as per spec, need to keep routes as JSON-only for now
-// See https://github.com/ethereum/builder-specs/issues/53 for more details
 
 export function getDefinitions(config: ChainForkConfig): RouteDefinitions<Endpoints> {
   return {
@@ -106,12 +102,12 @@ export function getDefinitions(config: ChainForkConfig): RouteDefinitions<Endpoi
       method: "GET",
       req: {
         writeReq: ({slot, parentHash, proposerPubkey: proposerPubKey}) => ({
-          params: {slot, parent_hash: toHexString(parentHash), pubkey: toPubkeyHex(proposerPubKey)},
+          params: {slot, parent_hash: toRootHex(parentHash), pubkey: toPubkeyHex(proposerPubKey)},
         }),
         parseReq: ({params}) => ({
           slot: params.slot,
-          parentHash: fromHexString(params.parent_hash),
-          proposerPubkey: fromHexString(params.pubkey),
+          parentHash: fromHex(params.parent_hash),
+          proposerPubkey: fromHex(params.pubkey),
         }),
         schema: {
           params: {slot: Schema.UintRequired, parent_hash: Schema.StringRequired, pubkey: Schema.StringRequired},
@@ -127,11 +123,11 @@ export function getDefinitions(config: ChainForkConfig): RouteDefinitions<Endpoi
     submitBlindedBlock: {
       url: "/eth/v1/builder/blinded_blocks",
       method: "POST",
-      req: JsonOnlyReq({
+      req: {
         writeReqJson: ({signedBlindedBlock}) => {
-          const fork = config.getForkName(signedBlindedBlock.message.slot);
+          const fork = config.getForkName(signedBlindedBlock.data.message.slot);
           return {
-            body: getExecutionForkTypes(fork).SignedBlindedBeaconBlock.toJson(signedBlindedBlock),
+            body: getExecutionForkTypes(fork).SignedBlindedBeaconBlock.toJson(signedBlindedBlock.data),
             headers: {
               [MetaHeader.Version]: fork,
             },
@@ -140,14 +136,31 @@ export function getDefinitions(config: ChainForkConfig): RouteDefinitions<Endpoi
         parseReqJson: ({body, headers}) => {
           const fork = toForkName(fromHeaders(headers, MetaHeader.Version));
           return {
-            signedBlindedBlock: getExecutionForkTypes(fork).SignedBlindedBeaconBlock.fromJson(body),
+            signedBlindedBlock: {data: getExecutionForkTypes(fork).SignedBlindedBeaconBlock.fromJson(body)},
+          };
+        },
+        writeReqSsz: ({signedBlindedBlock}) => {
+          const fork = config.getForkName(signedBlindedBlock.data.message.slot);
+          return {
+            body:
+              signedBlindedBlock.bytes ??
+              getExecutionForkTypes(fork).SignedBlindedBeaconBlock.serialize(signedBlindedBlock.data),
+            headers: {
+              [MetaHeader.Version]: fork,
+            },
+          };
+        },
+        parseReqSsz: ({body, headers}) => {
+          const fork = toForkName(fromHeaders(headers, MetaHeader.Version));
+          return {
+            signedBlindedBlock: {data: getExecutionForkTypes(fork).SignedBlindedBeaconBlock.deserialize(body)},
           };
         },
         schema: {
           body: Schema.Object,
           headers: {[MetaHeader.Version]: Schema.String},
         },
-      }),
+      },
       resp: {
         data: WithVersion<ExecutionPayload | ExecutionPayloadAndBlobsBundle, VersionMeta>((fork: ForkName) => {
           return isForkBlobs(fork)

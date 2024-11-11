@@ -125,6 +125,7 @@ export function overwriteEnrWithCliArgs(
       enr.seq = preSeq + BigInt(1);
     }
     // invalidate cached signature
+    // biome-ignore lint/complexity/useLiteralKeys: `_signature` is a private attribute
     delete enr["_signature"];
   }
 }
@@ -156,14 +157,14 @@ export async function initPeerIdAndEnr(
     // attempt to read stored peer id
     try {
       peerId = await readPeerId(peerIdFile);
-    } catch (e) {
+    } catch (_e) {
       logger.warn("Unable to read peerIdFile, creating a new peer id");
       return {...(await newPeerIdAndENR()), newEnr: true};
     }
     // attempt to read stored enr
     try {
       enr = SignableENR.decodeTxt(fs.readFileSync(enrFile, "utf-8"), createPrivateKeyFromPeerId(peerId).privateKey);
-    } catch (e) {
+    } catch (_e) {
       logger.warn("Unable to decode stored local ENR, creating a new ENR");
       enr = SignableENR.createV4(createPrivateKeyFromPeerId(peerId).privateKey);
       return {peerId, enr, newEnr: true};
@@ -186,9 +187,8 @@ export async function initPeerIdAndEnr(
     writeFile600Perm(peerIdFile, exportToJSON(peerId));
     writeFile600Perm(enrFile, enr.encodeTxt());
     return {peerId, enr};
-  } else {
-    const {peerId, enr} = await newPeerIdAndENR();
-    overwriteEnrWithCliArgs(enr, args, logger, {newEnr: true, bootnode});
-    return {peerId, enr};
   }
+  const {peerId, enr} = await newPeerIdAndENR();
+  overwriteEnrWithCliArgs(enr, args, logger, {newEnr: true, bootnode});
+  return {peerId, enr};
 }

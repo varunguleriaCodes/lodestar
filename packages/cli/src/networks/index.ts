@@ -22,8 +22,9 @@ import * as sepolia from "./sepolia.js";
 import * as holesky from "./holesky.js";
 import * as chiado from "./chiado.js";
 import * as ephemery from "./ephemery.js";
+import * as mekong from "./mekong.js";
 
-export type NetworkName = "mainnet" | "dev" | "gnosis" | "sepolia" | "holesky" | "chiado" | "ephemery";
+export type NetworkName = "mainnet" | "dev" | "gnosis" | "sepolia" | "holesky" | "chiado" | "ephemery" | "mekong";
 export const networkNames: NetworkName[] = [
   "mainnet",
   "gnosis",
@@ -31,6 +32,7 @@ export const networkNames: NetworkName[] = [
   "holesky",
   "chiado",
   "ephemery",
+  "mekong",
 
   // Leave always as last network. The order matters for the --help printout
   "dev",
@@ -70,6 +72,8 @@ export function getNetworkData(network: NetworkName): {
       return chiado;
     case "ephemery":
       return ephemery;
+    case "mekong":
+      return mekong;
     default:
       throw Error(`Network not supported: ${network}`);
   }
@@ -109,7 +113,6 @@ export async function getNetworkBootnodes(network: NetworkName): Promise<string[
       const bootEnrs = await fetchBootnodes(network);
       bootnodes.push(...bootEnrs);
     } catch (e) {
-      // eslint-disable-next-line no-console
       console.error(`Error fetching latest bootnodes: ${(e as Error).stack}`);
     }
   }
@@ -127,7 +130,7 @@ export function readBootnodes(bootnodesFilePath: string): string[] {
   for (const enrStr of bootnodes) {
     try {
       ENR.decodeTxt(enrStr);
-    } catch (e) {
+    } catch (_e) {
       throw new Error(`Invalid ENR found in ${bootnodesFilePath}:\n    ${enrStr}`);
     }
   }
@@ -211,7 +214,7 @@ export async function fetchWeakSubjectivityState(
 }
 
 export function getCheckpointFromArg(checkpointStr: string): Checkpoint {
-  const checkpointRegex = new RegExp("^(?:0x)?([0-9a-f]{64}):([0-9]+)$");
+  const checkpointRegex = /^(?:0x)?([0-9a-f]{64}):([0-9]+)$/;
   const match = checkpointRegex.exec(checkpointStr.toLowerCase());
   if (!match) {
     throw new Error(`Could not parse checkpoint string: ${checkpointStr}`);
