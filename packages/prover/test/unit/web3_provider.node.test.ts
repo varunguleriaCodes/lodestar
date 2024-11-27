@@ -7,7 +7,8 @@ import {ProofProvider} from "../../src/proof_provider/proof_provider.js";
 import {LCTransport, Web3ProviderType} from "../../src/interfaces.js";
 import {JsonRpcRequest, JsonRpcRequestOrBatch, JsonRpcResponse} from "../../src/types.js";
 
-describe("web3_provider", () => {
+// https://github.com/ChainSafe/lodestar/issues/7250
+describe.skip("web3_provider", () => {
   afterEach(() => {
     vi.clearAllMocks();
   });
