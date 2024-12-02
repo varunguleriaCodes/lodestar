@@ -9,43 +9,28 @@ echo " | | (_) | (_| |  __/\__ \ || (_| | |   "
 echo " |_|\___/ \__ _|\___||___/\__\__ _|_|   "
 echo ""
 
-# Declare a log file to capture detailed logs and a temp directory
-LOGFILE="$HOME/lodestar-app-temp/logfile.log"
-TEMP_DIR="$HOME/lodestar-app-temp"
 
-# Check if the directory exists
-if [ -d "$TEMP_DIR" ]; then
-    read -p "Directory $TEMP_DIR exists. Do you want to clear it out? (y/n) " -n 1 -r
-    echo    # move to a new line
-    if [[ $REPLY =~ ^[Yy]$ ]]
-    then
-        rm -rf "$TEMP_DIR"
-        echo "Directory $TEMP_DIR has been removed."
-    fi
-fi
+# Declare directories
+TEMP_DIR=$(mktemp -d)
+LOCAL_BIN="$HOME/.local/bin"
 
-# Create a temporary directory to work from
-mkdir -p "$TEMP_DIR"
-touch "$LOGFILE"
+# Ensure ~/.local/bin exists
+mkdir -p "$LOCAL_BIN"
 
-# Log and print the log file location
-echo "Log file is located at: $LOGFILE" | tee -a "$LOGFILE"
-
-# Change to $TEMP_DIR and print a message
-cd "$TEMP_DIR" || exit 1
-echo "Working from temporary directory: $TEMP_DIR" | tee -a "$LOGFILE"
+# Inform the user about temporary directory usage
+echo "Using temporary directory: $TEMP_DIR"
 
 # Fetch the latest release tag from GitHub
+echo "Fetching the latest version information..."
 VERSION=$(curl -s "https://api.github.com/repos/ChainSafe/lodestar/releases/latest" | grep '"tag_name":' | sed -E 's/.*"([^"]+)".*/\1/')
 
 # Check if VERSION is empty
 if [ -z "$VERSION" ]; then
-    echo "Failed to fetch the latest version. Exiting." | tee -a "$LOGFILE"
+    echo "Failed to fetch the latest version. Exiting."
     exit 1
 fi
 
-# Log and print a message
-echo "Latest version detected: $VERSION" | tee -a "$LOGFILE"
+echo "Latest version detected: $VERSION"
 
 # Detect the operating system and architecture
 OS=$(uname -s)
@@ -53,77 +38,55 @@ ARCH=$(uname -m)
 
 # Translate architecture to expected format
 case $ARCH in
-    x86_64)
-        ARCH="amd64"
-        ;;
-    aarch64|arm64)
-        ARCH="arm64"
-        ;;
+    x86_64) ARCH="amd64" ;;
+    aarch64|arm64) ARCH="arm64" ;;
     *)
-        echo "Unsupported architecture: $ARCH. Exiting." | tee -a "$LOGFILE"
+        echo "Unsupported architecture: $ARCH. Exiting."
         exit 1
         ;;
 esac
 
 # Translate OS to expected format
 case $OS in
-    Linux)
-        PLATFORM="linux-$ARCH"
-        ;;
-    Darwin)
-        PLATFORM="darwin-$ARCH"
-        ;;
+    Linux) PLATFORM="linux-$ARCH" ;;
     *)
-        echo "Unsupported operating system: $OS. Exiting." | tee -a "$LOGFILE"
+        echo "Unsupported operating system: $OS. Exiting."
         exit 1
         ;;
 esac
 
 # Construct the download URL
 URL="https://github.com/ChainSafe/lodestar/releases/download/$VERSION/lodestar-$VERSION-$PLATFORM.tar.gz"
-
-# Log and print a message
-echo "Downloading from: $URL" | tee -a "$LOGFILE"
+echo "Downloading from: $URL"
 
 # Download the tarball
-if ! wget "$URL" -O "lodestar-$VERSION-$PLATFORM.tar.gz" >> "$LOGFILE" 2>&1; then
-    echo "Download failed. Exiting." | tee -a "$LOGFILE"
+if ! wget "$URL" -O "$TEMP_DIR/lodestar-$VERSION-$PLATFORM.tar.gz"; then
+    echo "Download failed. Exiting."
     exit 1
 fi
 
-# Extract the tarball to the temporary directory
-if ! tar -xzf "lodestar-$VERSION-$PLATFORM.tar.gz" >> "$LOGFILE" 2>&1; then
-    echo "Extraction failed. Exiting." | tee -a "$LOGFILE"
+# Extract the tarball
+echo "Extracting the binary..."
+if ! tar -xzf "$TEMP_DIR/lodestar-$VERSION-$PLATFORM.tar.gz" -C "$TEMP_DIR"; then
+    echo "Extraction failed. Exiting."
     exit 1
 fi
 
-# Log and print a message
-echo "Binary extracted to: $TEMP_DIR" | tee -a "$LOGFILE"
+# Move the binary to ~/.local/bin
+echo "Installing the binary to $LOCAL_BIN..."
+mv "$TEMP_DIR/lodestar" "$LOCAL_BIN/"
+chmod +x "$LOCAL_BIN/lodestar"
 
-# Remove the tarball to clean up
-rm "lodestar-$VERSION-$PLATFORM.tar.gz"
-
-# Ask the user if they want to move the binary to /usr/local/bin
-read -p "Do you want to move the binary to /usr/local/bin? This will require sudo access. (y/n) " -n 1 -r
-echo    # move to a new line
-if [[ $REPLY =~ ^[Yy]$ ]]
-then
-    sudo mv "$TEMP_DIR/lodestar" /usr/local/bin/
-    echo "Binary moved to /usr/local/bin" | tee -a "$LOGFILE"
-    ln -s /usr/local/bin/lodestar "$TEMP_DIR/lodestar"
-    echo ""
-    echo "You can now run lodestar from anywhere." | tee -a "$LOGFILE"
-    echo ""
-    echo "To see the menu, execute the following command:" | tee -a "$LOGFILE"
-    echo ""
-    echo "Do a cd .. && ./lodestar --help" | tee -a "$LOGFILE"
-else
-    echo ""
-    echo "You can navigate to $TEMP_DIR to find and run lodestar." | tee -a "$LOGFILE"
-    echo ""
-    echo "To see the menu, execute the following commands:" | tee -a "$LOGFILE"
-    echo ""
-    echo "cd $TEMP_DIR" | tee -a "$LOGFILE"
-    echo "chmod +x lodestar" | tee -a "$LOGFILE" 
-    echo "Do a cd .. & run ./lodestar --help" | tee -a "$LOGFILE"
+# Verify if ~/.local/bin is in PATH
+if [[ ":$PATH:" != *":$LOCAL_BIN:"* ]]; then
+    echo "Adding $LOCAL_BIN to PATH..."
+    echo 'export PATH=$PATH:$HOME/.local/bin' >> "$HOME/.bashrc"
+    echo "Run 'source ~/.bashrc' to apply changes to your shell."
 fi
+
+# Clean up the temporary directory
+rm -rf "$TEMP_DIR"
+
+# Inform the user of successful installation
+echo "Installation complete!"
+echo "Do a cd .. & run ./lodestar --help"
