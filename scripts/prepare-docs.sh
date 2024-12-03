@@ -18,5 +18,5 @@ cp -r packages/prover/README.md $DOCS_DIR/pages/libraries/lightclient-prover/pro
 rm -rf $DOCS_DIR/pages/assets $DOCS_DIR/pages/images
 cp -r $ASSETS_DIR $DOCS_DIR/pages/assets
 
-# Copy binary setup script to docs
-cp scripts/setup.sh $DOCS_DIR/static/binary-setup.sh
+# Copy binary install script to docs
+cp scripts/install-binary.sh $DOCS_DIR/static/install
