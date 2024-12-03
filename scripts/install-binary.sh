@@ -9,7 +9,6 @@ echo " | | (_) | (_| |  __/\__ \ || (_| | |   "
 echo " |_|\___/ \__ _|\___||___/\__\__ _|_|   "
 echo ""
 
-
 # Declare directories
 TEMP_DIR=$(mktemp -d)
 LOCAL_BIN="$HOME/.local/bin"
@@ -89,4 +88,4 @@ rm -rf "$TEMP_DIR"
 
 # Inform the user of successful installation
 echo "Installation complete!"
-echo "Run './lodestar --help' to get started."
+echo "Run 'lodestar --help' to get started."
