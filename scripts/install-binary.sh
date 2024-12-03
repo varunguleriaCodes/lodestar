@@ -72,7 +72,7 @@ if ! tar -xzf "$TEMP_DIR/lodestar-$VERSION-$PLATFORM.tar.gz" -C "$TEMP_DIR"; the
 fi
 
 # Move the binary to ~/.local/bin
-echo "Installing the binary to $LOCAL_BIN..."
+echo "Moving the binary to $LOCAL_BIN..."
 mv "$TEMP_DIR/lodestar" "$LOCAL_BIN/"
 chmod +x "$LOCAL_BIN/lodestar"
 

@@ -4,7 +4,7 @@
 
 Binaries can be downloaded from the Lodestar [release page](https://github.com/ChainSafe/lodestar/releases/latest) under the `Assets` section.
 
-The following command can be used to install the latest version
+Run the following command to install the latest version
 
 ```bash
 curl -fsSL https://chainsafe.github.io/lodestar/install | bash
