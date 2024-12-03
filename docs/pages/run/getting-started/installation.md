@@ -5,9 +5,7 @@
 Binaries can be downloaded from [the release page](https://github.com/ChainSafe/lodestar/releases/latest) under the `Assets` section. You can also run a script that downloads and installs it for you
 
 ```bash
-cd scripts
-chmod +x setup.sh
-./setup.sh
+curl -fsSL https://chainsafe.github.io/lodestar/binary-setup.sh | bash
 ```
 
 ## Docker Installation

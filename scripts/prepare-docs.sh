@@ -17,3 +17,6 @@ cp -r packages/prover/README.md $DOCS_DIR/pages/libraries/lightclient-prover/pro
 # Copy visual assets
 rm -rf $DOCS_DIR/pages/assets $DOCS_DIR/pages/images
 cp -r $ASSETS_DIR $DOCS_DIR/pages/assets
+
+# Copy binary setup script to docs
+cp scripts/setup.sh $DOCS_DIR/static/binary-setup.sh
